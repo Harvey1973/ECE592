@@ -211,7 +211,8 @@ public class Neural {
 		double cost = 0.0;
 		
 		/* ourter loop for ietrations */
-		for (int j =0; j<30000;j++) {
+		for (int j =0; j<7000;j++) {
+			cost = 0.0;
 			/* iterating through examples*/
 			for (int i = 0; i <4;i++) {		
 				/* Z1 = W1*X[0]+bias_1*/
@@ -227,16 +228,20 @@ public class Neural {
 				double [][]dZ2 = Matrix_mul(Matrix_sub(A2,Y[i]),sigmoid_deriv_1);
 				/*dW2 = np.dot(dZ2,A1.T)*/
 				double [][]dW2 = Matrix_dot(dZ2,Matrix_trans(A1));
+				weights_2 = update(0.2,weights_2,dW2);
 				/* db2 = dZ2*/
 				double [][]db2 = dZ2 ;
+				bias_2 = update(0.2,bias_2,db2);
 				/*dZ1 = np.dot(W2.T,dZ2)*(A1)*(1-A1)*/
 				double [][]dZ1 = Matrix_mul(Matrix_dot(Matrix_trans(weights_2),dZ2),Sigmoid_deriv(A1));
 				/*dW1 = np.dot(dZ1,X.T)*/
 				double [][]dW1 = Matrix_dot(dZ1,Matrix_trans(X[i]));
+				weights_1 = update(0.2,weights_1,dW1); 
 				/*db1 = dZ1*/
 				double [][]db1 = dZ1 ;
+				bias_1 = update(0.2,bias_1,db1);
 				/* momentum update*/
-				/* v = mu*v - learning_rate*dW*/
+				/* v = mu*v - learning_rate*dW
 				v1 = Matrix_add(Matrix_mul(mu1,v1),lr_product(0.05,dW1));
 				v2 = Matrix_add(Matrix_mul(mu2,v2),lr_product(0.05,dW2));
 				v3 = Matrix_add(Matrix_mul(mu3,v3),lr_product(0.05,db1));
@@ -245,25 +250,28 @@ public class Neural {
 				weights_2 = Matrix_add(weights_2,v2);
 				bias_1 = Matrix_add(bias_1,v3);
 				bias_2 = Matrix_add(bias_2,v4);
-				
+				*/
 				
 				
 				/*---------------------------*/
 				
 				
-				/* update parameters
-				weights_1 = update(0.05,weights_1,dW1); 
-				weights_2 = update(0.05,weights_2,dW2);
-				bias_1 = update(0.05,bias_1,db1);
-				bias_2 = update(0.05,bias_2,db2);
-				*/
+				/* update parameters*/
+				
+				
+				
+				
 		}
 		cost = cost*0.5;
 
-		if (j%1000 == 0) {
+		//if (j%1000 == 0) {
 		count+=1;
 		//System.out.println("cost 1000 iteration");
 		System.out.println(count + " "+cost);
+		//}
+		if (cost <= 0.05) {
+			System.out.println("Number of iterations needed to reach 0.05 error is" + count);
+			break;
 		}
 
 		} /* this bracket closes the outer most loop*/

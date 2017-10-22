@@ -10,11 +10,11 @@ fig = plt.figure()
 
 ax1 = fig.add_subplot(111)
 
-ax1.set_title("Plot title")    
-ax1.set_xlabel('x label')
-ax1.set_ylabel('y label')
+ax1.set_title("Error curve")    
+ax1.set_xlabel('number of epochs')
+ax1.set_ylabel('training error')
 
-ax1.plot(x,y, c='r', label='the data')
+ax1.plot(x,y, c='r', label='error curve')
 
 leg = ax1.legend()
 

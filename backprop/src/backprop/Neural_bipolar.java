@@ -225,7 +225,17 @@ public class Neural_bipolar {
 		}
 		return results;
 	}
-	
+	public static double[][] update_v(double[][]w,double [][]dw,double mu,double[][]v){
+		double [][] mu_matrix = create_mu(w,mu);
+		return Matrix_add(Matrix_mul(mu_matrix,v),lr_product(0.2,dw));
+		
+	}
+	public static double [][] update_weights(double[][]w,double[][]v){
+		//v2 = Matrix_add(Matrix_mul(mu2,v2),lr_product(0.2,dW2));
+		//weights_2 = Matrix_add(weights_2,v2);
+		//v = update_v(w,dw,mu,v);
+		return Matrix_add(w,v);
+	}
 	public static void main(String[] args) {
 		
 		
@@ -240,16 +250,18 @@ public class Neural_bipolar {
 		double [][] v2 = create_v(weights_2);
 		double [][] v3 = create_v(bias_1);
 		double [][] v4 = create_v(bias_2);
-		double [][] mu1 = create_mu(weights_1,0.5);
-		double [][] mu2 = create_mu(weights_2,0.5);
-		double [][] mu3 = create_mu(bias_1,0.5);
-		double [][] mu4 = create_mu(bias_2,0.5);
+		double [][] mu1 = create_mu(weights_1,0.9);
+		double [][] mu2 = create_mu(weights_2,0.9);
+		double [][] mu3 = create_mu(bias_1,0.9);
+		double [][] mu4 = create_mu(bias_2,0.9);
+		double mu = 0.9;
 		/*----------------------------*/
 		int count = 0;
 		double cost = 0.0;
 		
 		/* outer loop for iterations */
-		for (int j =0; j<30000;j++) {
+		for (int j =0; j<3500;j++) {
+			cost = 0.0;
 			/* iterating through examples*/
 			for (int i = 0; i <4;i++) {		
 				/* Z1 = W1*X[0]+bias_1*/
@@ -265,43 +277,70 @@ public class Neural_bipolar {
 				double [][]dZ2 = Matrix_mul(Matrix_sub(A2,Y[i]),sigmoid_deriv_1);
 				/*dW2 = np.dot(dZ2,A1.T)*/
 				double [][]dW2 = Matrix_dot(dZ2,Matrix_trans(A1));
+				//weights_2 = update(0.2,weights_2,dW2);
+				//v2 = Matrix_add(Matrix_mul(mu2,v2),lr_product(0.2,dW2));
+				//weights_2 = Matrix_add(weights_2,v2);
+				v2 = update_v(weights_2,dW2,mu,v2);
+				weights_2 = update_weights(weights_2,v2);
 				/* db2 = dZ2*/
 				double [][]db2 = dZ2 ;
+				//bias_2 = update(0.2,bias_2,db2);
+				//v4 = Matrix_add(Matrix_mul(mu4,v4),lr_product(0.2,db2));
+				//bias_2 = Matrix_add(bias_2,v4);
+				//bias_2 = update_weights(bias_2,v4,db2,mu);
+				v4 = update_v(bias_2,db2,mu,v4);
+				bias_2 = update_weights(bias_2,v4);
 				/*dZ1 = np.dot(W2.T,dZ2)*(A1)*(1-A1)*/
 				double [][]dZ1 = Matrix_mul(Matrix_dot(Matrix_trans(weights_2),dZ2),sigmoid_deriv_bipolar(A1));
 				/*dW1 = np.dot(dZ1,X.T)*/
 				double [][]dW1 = Matrix_dot(dZ1,Matrix_trans(X[i]));
+				//weights_1 = update(0.2,weights_1,dW1);
+				//v1 = Matrix_add(Matrix_mul(mu1,v1),lr_product(0.2,dW1));
+				//weights_1 = Matrix_add(weights_1,v1);
+				//weights_1 = update_weights(weights_1,v1,dW1,mu);
+				v1 = update_v(weights_1,dW1,mu,v1);
+				weights_1 = update_weights(weights_1,v1);
 				/*db1 = dZ1*/
 				double [][]db1 = dZ1 ;
+				//bias_1 = update(0.2,bias_1,db1);
+				//v3 = Matrix_add(Matrix_mul(mu3,v3),lr_product(0.2,db1));
+				//bias_1 = Matrix_add(bias_1,v3);
+				//bias_1 = update_weights(bias_1,v3,db1,mu);
+				v3 = update_v(bias_1,db1,mu,v3);
+				bias_1 = update_weights(bias_1,v3);
 				/* momentum update*/
-				/* v = mu*v - learning_rate*dW*/
-				v1 = Matrix_add(Matrix_mul(mu1,v1),lr_product(0.05,dW1));
-				v2 = Matrix_add(Matrix_mul(mu2,v2),lr_product(0.05,dW2));
-				v3 = Matrix_add(Matrix_mul(mu3,v3),lr_product(0.05,db1));
-				v4 = Matrix_add(Matrix_mul(mu4,v4),lr_product(0.05,db2));
-				weights_1 = Matrix_add(weights_1,v1);
-				weights_2 = Matrix_add(weights_2,v2);
-				bias_1 = Matrix_add(bias_1,v3);
-				bias_2 = Matrix_add(bias_2,v4);
+				/* v = mu*v - learning_rate*dW
 				
+				
+				
+				
+				
+				
+				
+				
+				*/
 				
 				
 				/*---------------------------*/
 				
 				
-				/* update parameters
-				weights_1 = update(0.05,weights_1,dW1); 
-				weights_2 = update(0.05,weights_2,dW2);
-				bias_1 = update(0.05,bias_1,db1);
-				bias_2 = update(0.05,bias_2,db2);
-				*/
+				/* update parameters*/
+				 
+				
+				
+				
+				
 		}
 		cost = cost*0.5;
 
-		if (j%1000 == 0) {
+		//if (j%1000 == 0) {
 		count+=1;
 		//System.out.println("cost 1000 iteration");
 		System.out.println(count + " "+cost);
+		//}
+		if (cost <=0.05) {
+			System.out.println("Number of iterations needed to reach 0.05 error is" + count);
+			break;
 		}
 
 		} /* this bracket closes the outer most loop*/
