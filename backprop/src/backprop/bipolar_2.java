@@ -1,5 +1,11 @@
 package backprop;
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.util.Arrays;
+import java.util.Scanner;
 
 
 public class bipolar_2 {
@@ -284,6 +290,62 @@ public class bipolar_2 {
 			System.out.println(Arrays.deepToString(A2));
 		}
 	}
+	public static void save (String file, double[][]weights) throws IOException{
+	    try {
+		BufferedWriter outputWriter = null;
+	    outputWriter = new BufferedWriter(new FileWriter(file));
+	    for (int i=0;i<4;i++) {
+	    	for (int j=0;j<2;j++) {
+		    outputWriter.write(String.valueOf(weights[i][j]));
+		    outputWriter.newLine();
+	    	}
+	    }
+
+	    outputWriter.flush();  
+	    outputWriter.close(); 
+	}
+	    catch(Exception e) {
+	    	
+	    }
+}
+	
+	public static double [][] load(String file,String flag) throws FileNotFoundException {
+		try {
+			File f = new File(file);
+			Scanner s = new Scanner(f);
+			double [][] results = new double[4][2];
+	
+			if(flag == "weights_1") {
+				results = new double[4][2];
+				for (int k = 0;k<4;k++) {
+					
+					for (int j =0;j<2;j++) {
+						if (s.hasNext()) {
+							results[k][j] = Double.parseDouble(s.next());
+							}
+						}
+				}
+			}
+			else if(flag == "weights_2") {
+				 results = new double[1][4];
+					for (int k = 0;k<1;k++) {
+					
+					for (int j =0;j<4;j++) {
+						if (s.hasNext()) {
+							results[k][j] = Double.parseDouble(s.next());
+							}
+						}
+			   }
+			}
+
+
+			return results;
+		}
+		catch(Exception e) {
+			return null;
+		}
+		
+	}
 	public static void main(String[] args) {
 		
 		String flag = "binary";
@@ -307,7 +369,7 @@ public class bipolar_2 {
 		double [][] v2 = create_v(weights_2);
 		double [][] v3 = create_v(bias_1);
 		double [][] v4 = create_v(bias_2);
-		
+		double [][]loaded_weights ; 
 		
 		
 		int sum = 0;
@@ -341,6 +403,19 @@ public class bipolar_2 {
 		
 		/* predict*/
 		predict(X,Y,weights_1,bias_1,weights_2,bias_2,flag);
+		try {
+			save ("weights_1.txt",weights_1);
+			}
+			catch(Exception e) {
+				
+			}
+		try {
+			loaded_weights = load("C:\\Users\\zhezhong\\Desktop\\New folder\\ece592\\backprop\\weights_1.txt","weights_1");
+			System.out.println("loaded weights"+Arrays.deepToString(loaded_weights));
+		}
+		catch (Exception e) {
+			
+		}
 		
 	}
 		

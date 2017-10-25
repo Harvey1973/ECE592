@@ -1,5 +1,11 @@
 package backprop;
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.util.Arrays;
+import java.util.Scanner;
 
 
 public class Neural {
@@ -197,6 +203,52 @@ public class Neural {
 		return Matrix_add(w,v);
 	}
 	
+	public static void write (String file, double[][]weights) throws IOException{
+	    try {
+		BufferedWriter outputWriter = null;
+	    outputWriter = new BufferedWriter(new FileWriter(file));
+	    for (int i=0;i<4;i++) {
+	    	for (int j=0;j<2;j++) {
+		    outputWriter.write(String.valueOf(weights[i][j]));
+		    outputWriter.newLine();
+	    	}
+	    }
+
+	    outputWriter.flush();  
+	    outputWriter.close(); 
+	}
+	    catch(Exception e) {
+	    	
+	    }
+}
+	
+	public static double [][] load(String file) throws FileNotFoundException {
+		try {
+			File f = new File(file);
+			Scanner s = new Scanner(f);
+			double [][] results = new double[4][2];
+			for (int k = 0;k<4;k++) {
+				
+				for (int j =0;j<2;j++) {
+					if (s.hasNext()) {
+						results[k][j] = Double.parseDouble(s.next());
+						//System.out.println("next double is" + s.next());
+						//System.out.println("next double is" + results[k][j]);
+						
+					}
+					
+					
+			}
+		   
+		}
+			return results;
+		}
+		catch(Exception e) {
+			return null;
+		}
+		
+	}
+	
 	public static int train(double[][][]X,double[][][]Y,double[][]w1,double[][]b1,double[][]w2,double[][]b2,int num_iterations, double error_threshold,double[][]v1,double[][]v2,double[][]v3,double[][]v4,double mu,double cost) {
 		int count = 0;
 		int sum = 0;
@@ -260,7 +312,7 @@ public class Neural {
 			System.out.println(Arrays.deepToString(A2));
 		}
 	}
-	public static void main(String[] args) {
+	public static void main(String[] args) throws FileNotFoundException {
 		
 		
 		double [][][] X = {{{0},{0}},{{0},{1}},{{1},{0}},{{1},{1}}};
@@ -274,7 +326,7 @@ public class Neural {
 		double [][] v2 = create_v(weights_2);
 		double [][] v3 = create_v(bias_1);
 		double [][] v4 = create_v(bias_2);
-		
+		double [][]loaded_weights ; 
 		
 		
 		int sum = 0;
@@ -308,7 +360,14 @@ public class Neural {
 		
 		/* predict*/
 		predict(X,Y,weights_1,bias_1,weights_2,bias_2);
-		
+		try {
+		write ("weights_1.txt",weights_1);
+		}
+		catch(Exception e) {
+			
+		}
+		loaded_weights = load("C:\\Users\\zhezhong\\Desktop\\New folder\\ece592\\backprop\\weights_1.txt");
+		System.out.println("loaded weights"+Arrays.deepToString(loaded_weights));
 	}
 		
 
