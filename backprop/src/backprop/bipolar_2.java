@@ -1,4 +1,3 @@
-
 package backprop;
 import java.util.Arrays;
 
@@ -78,52 +77,20 @@ public class bipolar_2 {
 		return weights;
 	}
 	
-	public static double[][] sigmoid(double [][]m){
+	public static double[][] sigmoid(double [][]m,String flag){
 		int row_num = m.length;
 		int col_num = m[0].length;
 		double [][] results = new double[row_num][col_num];
 		for(int i=0; i<row_num; i++) {
 			
 			for(int j=0; j<col_num; j++) {
+				if(flag == "binary") {
 				/*perform sigmoid activation for every element in the matrix  1/(1+e^(-x))*/
 				results[i][j] = 1/(1+Math.exp(-1*m[i][j]));
-			}
-		}
-		return results;
-	}
-	public static double [][] bipolar_sigmoid(double [][]m){
-		int row_num = m.length;
-		int col_num = m[0].length;
-		double [][] results = new double[row_num][col_num];
-		for(int i=0; i<row_num; i++) {
-			
-			for(int j=0; j<col_num; j++) {
-				/*perform sigmoid activation bipolar version for every element in the matrix  1/(1+e^(-x))*/
-				results[i][j] = (1-Math.exp(-1*m[i][j]))/(1+Math.exp(-1*m[i][j]));
-			}
-		}
-		return results;
-		
-	}
-	public static double [][] sigmoid_deriv_bipolar(double [][]m){
-		int row_num = m.length;
-		int col_num = m[0].length;
-		double [][] results = new double[row_num][col_num];
-		double [][] ones = new double [row_num][col_num];
-		ones = initialize_ones(m);
-		results = constant_mul(0.5,Matrix_mul(Matrix_add(ones,m),Matrix_sub(ones,m))); 
-		return results;
-		
-	}
-	public static double [][] constant_mul(double c,double[][]m){
-		int row_num = m.length;
-		int col_num = m[0].length;
-		double [][] results = new double[row_num][col_num];
-		for(int i=0; i<row_num; i++) {
-			
-			for(int j=0; j<col_num; j++) {
-				
-				results[i][j] = c*m[i][j];
+				}
+				else if (flag == "bipolar") {
+					results[i][j] = (1-Math.exp(-1*m[i][j]))/(1+Math.exp(-1*m[i][j]));
+				}
 			}
 		}
 		return results;
@@ -155,17 +122,36 @@ public class bipolar_2 {
 		return ones;
 		
 	}
-	public static double [][] Sigmoid_deriv(double [][]m){
+	public static double [][] sigmoid_deriv(double [][]m,String flag){
 		int row_num = m.length;
 		int col_num = m[0].length;
 		double [][] results = new double[row_num][col_num];
 		double [][] ones = new double [row_num][col_num];
+		if (flag == "binary") {
+			
 		ones = initialize_ones(m);
 		results = Matrix_mul(m,Matrix_sub(ones,m)); 
+		}
+		else if (flag == "bipolar") {
+		ones = initialize_ones(m);
+		results = constant_mul(0.5,Matrix_mul(Matrix_add(ones,m),Matrix_sub(ones,m))); 
+		}
 		return results;
 		
 	}
-
+	public static double [][] constant_mul(double c,double[][]m){
+		int row_num = m.length;
+		int col_num = m[0].length;
+		double [][] results = new double[row_num][col_num];
+		for(int i=0; i<row_num; i++) {
+			
+			for(int j=0; j<col_num; j++) {
+				
+				results[i][j] = c*m[i][j];
+			}
+		}
+		return results;
+	}
 	public static double [][] update(double lr, double[][]weights,double[][]d_weights){
 		/* return the updated weights matrix*/
 		int row_num = weights.length;
@@ -190,7 +176,7 @@ public class bipolar_2 {
 			
 			for(int j=0; j<col_num; j++) {
 				
-				results[i][j] =lr*d_weights[i][j];
+				results[i][j] =-lr*d_weights[i][j];
 
 			}
 		}
@@ -225,12 +211,93 @@ public class bipolar_2 {
 		}
 		return results;
 	}
+	public static double[][] update_v(double[][]w,double [][]dw,double mu,double[][]v){
+		double [][] mu_matrix = create_mu(w,mu);
+		return Matrix_add(Matrix_mul(mu_matrix,v),lr_product(0.2,dw));
+		
+	}
+	public static double [][] update_weights(double[][]w,double[][]v){
+
+		return Matrix_add(w,v);
+	}
 	
+	public static int train(double[][][]X,double[][][]Y,double[][]w1,double[][]b1,double[][]w2,double[][]b2,int num_iterations, double error_threshold,double[][]v1,double[][]v2,double[][]v3,double[][]v4,double mu,double cost,String flag) {
+		int count = 0;
+		int sum = 0;
+		/* outer loop for iterations */
+		for (int j =0; j<num_iterations;j++) {
+			if (cost >= error_threshold) {
+			cost = 0.0;
+			/* iterating through examples*/
+			for (int i = 0; i <4;i++) {		
+				/* Z1 = W1*X[0]+bias_1*/
+				double [][] Z1 = Matrix_add(Matrix_dot(w1,X[i]),b1);
+				double [][] A1 = sigmoid(Z1,flag);		
+				/* Z2 = W2*A1 + bias_2*/
+				double [][] Z2 = Matrix_add(Matrix_dot(w2,A1),b2);
+				double [][] A2 = sigmoid(Z2,flag);
+				cost += (Y[i][0][0]-A2[0][0])*(Y[i][0][0]-A2[0][0]);
+				/*back prop*/
+				/* dZ2 = (A2-Y[0])*(A2)*(1-A2)*/
+				double [][]sigmoid_deriv_1 = sigmoid_deriv(A2,flag);
+				double [][]dZ2 = Matrix_mul(Matrix_sub(A2,Y[i]),sigmoid_deriv_1);
+				/*dW2 = np.dot(dZ2,A1.T)*/
+				double [][]dW2 = Matrix_dot(dZ2,Matrix_trans(A1));
+				v2 = update_v(w2,dW2,mu,v2);
+				w2 = update_weights(w2,v2);
+				/* db2 = dZ2*/
+				double [][]db2 = dZ2 ;
+				v4 = update_v(b2,db2,mu,v4);
+				b2 = update_weights(b2,v4);
+				/*dZ1 = np.dot(W2.T,dZ2)*(A1)*(1-A1)*/
+				double [][]dZ1 = Matrix_mul(Matrix_dot(Matrix_trans(w2),dZ2),sigmoid_deriv(A1,flag));
+				/*dW1 = np.dot(dZ1,X.T)*/
+				double [][]dW1 = Matrix_dot(dZ1,Matrix_trans(X[i]));
+				v1 = update_v(w1,dW1,mu,v1);
+				w1 = update_weights(w1,v1);
+				/*db1 = dZ1*/
+				double [][]db1 = dZ1 ;
+				v3 = update_v(b1,db1,mu,v3);
+				b1 = update_weights(b1,v3);
+			}
+		cost = cost*0.5;
+		count+=1;
+		sum = j;
+		System.out.println(count + " "+cost);
+		}  /* if loop*/
+
+		
+		} /* this bracket closes the outer most loop*/
+		return sum;
+	}
+	public static void predict(double[][][]X,double[][][]Y,double [][] weights_1,double [][] bias_1,double[][] weights_2,double [][] bias_2,String flag) {
+		/* predict */
+		for (int i = 0; i <4;i++) {
+			double [][] Z1 = Matrix_add(Matrix_dot(weights_1,X[i]),bias_1);
+			
+			double [][] A1 = sigmoid(Z1,flag);
+	
+	
+			/* Z2 = W2*A1 + bias_2*/
+			double [][] Z2 = Matrix_add(Matrix_dot(weights_2,A1),bias_2);
+			double [][] A2 = sigmoid(Z2,flag);
+			System.out.println(Arrays.deepToString(A2));
+		}
+	}
 	public static void main(String[] args) {
 		
-		
-		double [][][] X = {{{-1},{-1}},{{-1},{1}},{{1},{-1}},{{1},{1}}};
-		double [][][] Y = {{{-1}},{{1}},{{1}},{{-1}}};
+		String flag = "binary";
+		double [][][] X = {{{0},{0}},{{0},{1}},{{1},{0}},{{1},{1}}};
+		double [][][] Y = {{{0}},{{1}},{{1}},{{0}}};
+		if (flag == "binary") {
+			X = new double[][][]{{{0},{0}},{{0},{1}},{{1},{0}},{{1},{1}}};
+			Y = new double[][][] {{{0}},{{1}},{{1}},{{0}}};
+		}
+		else if (flag == "bipolar") {
+			 X = new double[][][]{{{-1},{-1}},{{-1},{1}},{{1},{-1}},{{1},{1}}};
+			 Y = new double [][][]{{{-1}},{{1}},{{1}},{{-1}}};
+		}
+
 		double [][] weights_1 = initialize_weights(4,2);
 		double [][] bias_1 = initialize_bias(4,1);
 		double [][] weights_2 = initialize_weights(1,4);
@@ -240,183 +307,44 @@ public class bipolar_2 {
 		double [][] v2 = create_v(weights_2);
 		double [][] v3 = create_v(bias_1);
 		double [][] v4 = create_v(bias_2);
-		double [][] mu1 = create_mu(weights_1,0.5);
-		double [][] mu2 = create_mu(weights_2,0.5);
-		double [][] mu3 = create_mu(bias_1,0.5);
-		double [][] mu4 = create_mu(bias_2,0.5);
-		/*----------------------------*/
-		int count = 0;
-		double cost = 0.0;
 		
-		/* outer loop for iterations */
-		for (int j =0; j<3500;j++) {
-			cost = 0.0;
-			/* iterating through examples*/
-			for (int i = 0; i <4;i++) {		
-				/* Z1 = W1*X[0]+bias_1*/
-				double [][] Z1 = Matrix_add(Matrix_dot(weights_1,X[i]),bias_1);
-				double [][] A1 = bipolar_sigmoid(Z1);		
-				/* Z2 = W2*A1 + bias_2*/
-				double [][] Z2 = Matrix_add(Matrix_dot(weights_2,A1),bias_2);
-				double [][] A2 = bipolar_sigmoid(Z2);
-				cost += (Y[i][0][0]-A2[0][0])*(Y[i][0][0]-A2[0][0]);
-				
-				/*back prop*/
-				/* dZ2 = (A2-Y[0])*(A2)*(1-A2)*/
-				double [][]sigmoid_deriv_1 = sigmoid_deriv_bipolar(A2);
-				double [][]dZ2 = Matrix_mul(Matrix_sub(Y[i],A2),sigmoid_deriv_1);
-				/*dW2 = np.dot(dZ2,A1.T)*/
-				
-				/* db2 = dZ2*/
-				double [][]db2 = dZ2 ;
-				/*dZ1 = np.dot(W2.T,dZ2)*(A1)*(1-A1)*/
-				double [][]dZ1 = Matrix_mul(Matrix_dot(Matrix_trans(weights_2),dZ2),sigmoid_deriv_bipolar(A1));
-				/*dW1 = np.dot(dZ1,X.T)*/
-				
-				/*db1 = dZ1*/
-				double [][]db1 = dZ1 ;
-				/* momentum update*/
-				/* v = mu*v - learning_rate*dW
-				v1 = Matrix_add(Matrix_mul(mu1,v1),lr_product(0.05,dW1));
-				v2 = Matrix_add(Matrix_mul(mu2,v2),lr_product(0.05,dW2));
-				v3 = Matrix_add(Matrix_mul(mu3,v3),lr_product(0.05,db1));
-				v4 = Matrix_add(Matrix_mul(mu4,v4),lr_product(0.05,db2));
-				weights_1 = Matrix_add(weights_1,v1);
-				weights_2 = Matrix_add(weights_2,v2);
-				bias_1 = Matrix_add(bias_1,v3);
-				bias_2 = Matrix_add(bias_2,v4);
-				*/
-				
-				
-				/*---------------------------*/
-				
-				
-				/* update parameters
-				delta_w1 = Matrix
-				weights_1 = Matrix_add(weights_1,lr_product(0.2,))
-				weights_2 = update(0.15,weights_2,dW2);
-				bias_1 = update(0.15,bias_1,db1);
-				bias_2 = update(0.15,bias_2,db2);
-				*/
-		}
-		cost = cost*0.5;
-
-		//if (j%1000 == 0) {
-		count+=1;
-		//System.out.println("cost 1000 iteration");
-		System.out.println(count + " "+cost);
-		//}
-		if (cost <=0.05) {
-			System.out.println("Number of iterations needed to reach 0.05 error is" + count);
-			break;
-		}
-
-		} /* this bracket closes the outer most loop*/
-		/* predict */
-		for (int i = 0; i <4;i++) {
-			double [][] Z1 = Matrix_add(Matrix_dot(weights_1,X[i]),bias_1);
-			
-			double [][] A1 = bipolar_sigmoid(Z1);
-	
-	
-			/* Z2 = W2*A1 + bias_2*/
-			double [][] Z2 = Matrix_add(Matrix_dot(weights_2,A1),bias_2);
-			double [][] A2 = bipolar_sigmoid(Z2);
-			System.out.println(Arrays.deepToString(A2));
-		}
+		
+		
+		int sum = 0;
+		int sum_2 = 0;
+		int num = 0;
+		double cost = 1.0;
+		
+		/* training sessions*/
+		for (int k =0 ;k <=100; k++) {
+			 cost = 1.0;
+			 weights_1 = initialize_weights(4,2);
+			 bias_1 = initialize_bias(4,1);
+			 weights_2 = initialize_weights(1,4);
+			 bias_2 = initialize_bias(1,1);
+			/* momentum matrix*/
+			 v1 = create_v(weights_1);
+			 v2 = create_v(weights_2);
+			 v3 = create_v(bias_1);
+			 v4 = create_v(bias_2);
+			 /* hyper parameters*/
+			 double mu = 0.9;
+			 int num_iterations = 1000;
+			 double error_threshold = 0.05;
+			 
+			 sum = train(X,Y,weights_1,bias_1,weights_2,bias_2,num_iterations, error_threshold,v1,v2,v3,v4, mu,cost,flag);
+			 
+			 sum_2 = sum_2 +sum;
+			 num = k;
+		}  /* training session loop*/
+		System.out.println("Average number of iterations needed to reach 0.05 error is" + sum_2/num);
+		
+		/* predict*/
+		predict(X,Y,weights_1,bias_1,weights_2,bias_2,flag);
 		
 	}
 		
 
 }
 
-/* outer loop for iterations */
-for (int j =0; j<7000;j++) {
-	if (cost >= 0.05) {
-	cost = 0.0;
-	/* iterating through examples*/
-	for (int i = 0; i <4;i++) {		
-		/* Z1 = W1*X[0]+bias_1*/
-		double [][] Z1 = Matrix_add(Matrix_dot(weights_1,X[i]),bias_1);
-		double [][] A1 = sigmoid(Z1);		
-		/* Z2 = W2*A1 + bias_2*/
-		double [][] Z2 = Matrix_add(Matrix_dot(weights_2,A1),bias_2);
-		double [][] A2 = sigmoid(Z2);
-		cost += (Y[i][0][0]-A2[0][0])*(Y[i][0][0]-A2[0][0]);
-		/*back prop*/
-		/* dZ2 = (A2-Y[0])*(A2)*(1-A2)*/
-		double [][]sigmoid_deriv_1 = sigmoid_deriv(A2);
-		double [][]dZ2 = Matrix_mul(Matrix_sub(A2,Y[i]),sigmoid_deriv_1);
-		/*dW2 = np.dot(dZ2,A1.T)*/
-		double [][]dW2 = Matrix_dot(dZ2,Matrix_trans(A1));
-		v2 = update_v(weights_2,dW2,mu,v2);
-		weights_2 = update_weights(weights_2,v2);
-		/* db2 = dZ2*/
-		double [][]db2 = dZ2 ;
-		v4 = update_v(bias_2,db2,mu,v4);
-		bias_2 = update_weights(bias_2,v4);
-		/*dZ1 = np.dot(W2.T,dZ2)*(A1)*(1-A1)*/
-		double [][]dZ1 = Matrix_mul(Matrix_dot(Matrix_trans(weights_2),dZ2),sigmoid_deriv(A1));
-		/*dW1 = np.dot(dZ1,X.T)*/
-		double [][]dW1 = Matrix_dot(dZ1,Matrix_trans(X[i]));
-		v1 = update_v(weights_1,dW1,mu,v1);
-		weights_1 = update_weights(weights_1,v1);
-		/*db1 = dZ1*/
-		double [][]db1 = dZ1 ;
-		v3 = update_v(bias_1,db1,mu,v3);
-		bias_1 = update_weights(bias_1,v3);
-	}
-cost = cost*0.5;
-count+=1;
-sum = j;
-System.out.println(count + " "+cost);
-}  /* if loop*/
 
-
-} /* this bracket closes the outer most loop*/
-
-
-/* outer loop for iterations */
-for (int j =0; j<1500;j++) {
-	if (cost >= 0.05) {
-	cost = 0.0;
-	/* iterating through examples*/
-	for (int i = 0; i <4;i++) {		
-		/* Z1 = W1*X[0]+bias_1*/
-		double [][] Z1 = Matrix_add(Matrix_dot(weights_1,X[i]),bias_1);
-		double [][] A1 = bipolar_sigmoid(Z1);		
-		/* Z2 = W2*A1 + bias_2*/
-		double [][] Z2 = Matrix_add(Matrix_dot(weights_2,A1),bias_2);
-		double [][] A2 = bipolar_sigmoid(Z2);
-		cost += (Y[i][0][0]-A2[0][0])*(Y[i][0][0]-A2[0][0]);
-		/*back prop*/
-		/* dZ2 = (A2-Y[0])*(1+A2)*(1-A2)*0.5*/
-		double [][]sigmoid_deriv_1 = sigmoid_deriv_bipolar(A2);
-		double [][]dZ2 = Matrix_mul(Matrix_sub(A2,Y[i]),sigmoid_deriv_1);
-		/*dW2 = np.dot(dZ2,A1.T)*/
-		double [][]dW2 = Matrix_dot(dZ2,Matrix_trans(A1));
-		v2 = update_v(weights_2,dW2,mu,v2);
-		weights_2 = update_weights(weights_2,v2);
-		/* db2 = dZ2*/
-		double [][]db2 = dZ2 ;
-		v4 = update_v(bias_2,db2,mu,v4);
-		bias_2 = update_weights(bias_2,v4);
-		/*dZ1 = np.dot(W2.T,dZ2)*(1+A1)*(1-A1)*0.5*/
-		double [][]dZ1 = Matrix_mul(Matrix_dot(Matrix_trans(weights_2),dZ2),sigmoid_deriv_bipolar(A1));
-		/*dW1 = np.dot(dZ1,X.T)*/
-		double [][]dW1 = Matrix_dot(dZ1,Matrix_trans(X[i]));
-		v1 = update_v(weights_1,dW1,mu,v1);
-		weights_1 = update_weights(weights_1,v1);
-		/*db1 = dZ1*/
-		double [][]db1 = dZ1 ;
-		v3 = update_v(bias_1,db1,mu,v3);
-		bias_1 = update_weights(bias_1,v3);
-	}
-cost = cost*0.5;
-count+=1;
-sum = j;
-System.out.println(count + " "+cost);
-}  /* if loop*/
-
-
-} /* this bracket closes the outer most loop*/
