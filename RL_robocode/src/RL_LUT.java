@@ -84,7 +84,25 @@ public class RL_LUT extends AdvancedRobot {
 		
 
 	}
-	
+	public void load() throws IOException {
+	BufferedReader br = new BufferedReader(new FileReader(getDataFile("Q_Table.txt")));
+	String line ;
+	try {
+        int count_2=0;
+        while ((line= br.readLine()) != null) {
+        	String splitLine[] = line.split("    ");
+			for (int m =0 ; m<Q_table[0].length;m++){
+        	Q_table[count_2][m]=splitLine[m]; 
+        	Q_table[count_2][m]=splitLine[m];
+			}
+        	count_2+=+1;
+        }
+	} catch (IOException e) {
+		
+	}finally {
+		br.close();
+	}
+}
 	public int quantize_position(double coordinates) {
 		if(coordinates<=100) {
 			x = 0;
