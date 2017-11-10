@@ -30,6 +30,9 @@ public class Q_learning_LUT extends AdvancedRobot {
 	int y = 0;
 	int dist = 0;// distance is quantized in 10 levels 
 	int bearing = 0;
+	double getBearing ;
+	double Velocity ;
+
 	String current_state = null;
 	int current_state_index = 0;
 	String next_state = null;
@@ -47,7 +50,7 @@ public class Q_learning_LUT extends AdvancedRobot {
 	double [] current_state_action = new double[5];    //available actions for one particular state 
 	static int row_num = 8*6*10*4;
 	static int col_num = 6;
-	boolean initialize = false;
+	boolean initialize = true;
 	boolean explore_mode = true;
 	boolean greedy_mode = false;
 	String [][] Q_table = new String [row_num][col_num];  // This Q_table is a String matrix, use this to save Q_table on disk 
@@ -79,7 +82,7 @@ public class Q_learning_LUT extends AdvancedRobot {
 
 		PrintStream table = null;
 		try {
-			table = new PrintStream(new RobocodeFileOutputStream(getDataFile("Q_table_2.txt")));
+			table = new PrintStream(new RobocodeFileOutputStream(getDataFile("Q_table_3.txt")));
 			for (int i=0;i<Q_table.length;i++) {
 				table.println(Q_table[i][0]+"    "+Q_table[i][1]+"    "+Q_table[i][2]+"    "+Q_table[i][3]+"    "+Q_table[i][4]+"    "+Q_table[i][5]);
 			}
@@ -127,7 +130,7 @@ public class Q_learning_LUT extends AdvancedRobot {
 		save_reward();
 	}
 	public void load() throws IOException {
-	BufferedReader br = new BufferedReader(new FileReader(getDataFile("Q_Table_2.txt")));
+	BufferedReader br = new BufferedReader(new FileReader(getDataFile("Q_Table_3.txt")));
 	String line ;
 	try {
         int count_2=0;
@@ -244,6 +247,8 @@ public class Q_learning_LUT extends AdvancedRobot {
 		y_test = getY();
 		dist_test = e.getDistance();
 		bearing_test = e.getBearing();
+		Velocity =e.getVelocity();
+		
 		x = quantize_position(getX());
 		y = quantize_position(getY());
 		dist = quantize_distance(e.getDistance());
@@ -337,23 +342,41 @@ public class Q_learning_LUT extends AdvancedRobot {
 		
 	}
 	public void take_action(int action_index) {
-
-		
+		// circle our enemy
+		int moveDirection=+1; 
+		int moveDirection_1=-1;
 		if(action_index ==1) {
-			turnRight(45);
-			ahead(100);
+			if (Velocity == 0)
+				moveDirection *= 1;
+			setTurnRight(getBearing + 90);
+			setAhead(150 * moveDirection);
+			
 		}
 		else if (action_index==2) {
-			turnLeft(45);
-			back(100);
+		    moveDirection_1=-1;  
+			if (Velocity == 0)
+				moveDirection_1 *= 1;
+			setTurnRight(getBearing + 90);
+			setAhead(150 * moveDirection_1);
+			
 		}
 		else if(action_index==3) {
 			ahead(50);
+			//turnGunRight(gunTurnAmt); // Try changing these to setTurnGunRight,
+			turnRight(getBearing-25); // and see how much Tracker improves...
+			// (you'll have to make Tracker an AdvancedRobot)
+			ahead(150);
+			
 			
 		}
 		else if(action_index==4) {
 			turnRight(90);
 			back(100);
+			//turnGunRight(gunTurnAmt); // Try changing these to setTurnGunRight,
+			turnRight(getBearing-25); // and see how much Tracker improves...
+			// (you'll have to make Tracker an AdvancedRobot)
+			back(150);
+			
 		}
 		else if(action_index == 5) {
 			turnLeft(90);
