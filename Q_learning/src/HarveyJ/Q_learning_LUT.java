@@ -12,6 +12,7 @@ import robocode.BattleEndedEvent;
 import robocode.BulletHitEvent;
 import robocode.HitByBulletEvent;
 import robocode.HitRobotEvent;
+import robocode.HitWallEvent;
 import robocode.RobocodeFileOutputStream;
 import robocode.RoundEndedEvent;
 import robocode.ScannedRobotEvent;
@@ -22,6 +23,7 @@ public class Q_learning_LUT extends AdvancedRobot {
 	double x_test;
 	double dist_test;
 	double bearing_test;
+	private byte scanDirection = 1;
 	// state representations will be a 4 tuple{x_a,y_a,distance_to_enemy,Bearing}
 	// below is the quantized states
 	int x = 0;// x _coordinates are quantized in to integers in range [0,8] representing 0-800 pixels
@@ -37,7 +39,7 @@ public class Q_learning_LUT extends AdvancedRobot {
 	double next_q = 0.0;
 	double reward = 0.0;
 	double total_reward = 0.0;
-	double [] reward_array = new double [1500];   // record rewards for multiple battles
+	double [] reward_array = new double [15000];   // record rewards for multiple battles
 	// hyper paramaters 
 	double alpha = 0.05;  // learning rate
 	double gamma = 0.99;  // discount factor
@@ -45,13 +47,13 @@ public class Q_learning_LUT extends AdvancedRobot {
 	double [] current_state_action = new double[5];    //available actions for one particular state 
 	static int row_num = 8*6*10*4;
 	static int col_num = 6;
-	boolean initialize = true;
+	boolean initialize = false;
 	boolean explore_mode = true;
 	boolean greedy_mode = false;
-	static String [][] Q_table = new String [row_num][col_num];  // This Q_table is a String matrix, use this to save Q_table on disk 
+	String [][] Q_table = new String [row_num][col_num];  // This Q_table is a String matrix, use this to save Q_table on disk 
 	double [][] Q_table_double = new double[row_num][col_num]; // This Q_table is a double matrix , use this to perform numeric operations 
 	
-	public static void initialize_Q_table(String[][]Q_table) {
+	public void initialize_Q_table(String[][]Q_table) {
 		System.out.println("Initializing Q Table");
 		// An example entry of Q_table will be like 
 		//x    y   dist  Bearing    action_1 	action_2	action_3	action_4	action_5  
@@ -77,7 +79,7 @@ public class Q_learning_LUT extends AdvancedRobot {
 
 		PrintStream table = null;
 		try {
-			table = new PrintStream(new RobocodeFileOutputStream(getDataFile("Q_table.txt")));
+			table = new PrintStream(new RobocodeFileOutputStream(getDataFile("Q_table_2.txt")));
 			for (int i=0;i<Q_table.length;i++) {
 				table.println(Q_table[i][0]+"    "+Q_table[i][1]+"    "+Q_table[i][2]+"    "+Q_table[i][3]+"    "+Q_table[i][4]+"    "+Q_table[i][5]);
 			}
@@ -125,7 +127,7 @@ public class Q_learning_LUT extends AdvancedRobot {
 		save_reward();
 	}
 	public void load() throws IOException {
-	BufferedReader br = new BufferedReader(new FileReader(getDataFile("Q_Table.txt")));
+	BufferedReader br = new BufferedReader(new FileReader(getDataFile("Q_Table_2.txt")));
 	String line ;
 	try {
         int count_2=0;
@@ -133,9 +135,13 @@ public class Q_learning_LUT extends AdvancedRobot {
         	String splitLine[] = line.split("    ");
 			for (int m =0 ; m<Q_table[0].length;m++){
 				Q_table[count_2][m]=splitLine[m]; 
+				
 			}
         	count_2+=+1;
+        	
         }
+        //System.out.println("the last line loaded Q table entry is 	 "+ Arrays.toString(Q_table[count_2-1]));
+        
 	} catch (IOException e) {
 		
 	}
@@ -146,6 +152,7 @@ public class Q_learning_LUT extends AdvancedRobot {
 	public void run() {
 		if(initialize) {
 		initialize_Q_table(Q_table);
+		save_table();
 		}
 		initialize = false;
 		try {
@@ -154,23 +161,30 @@ public class Q_learning_LUT extends AdvancedRobot {
 		} catch(IOException e) {
 			
 		}
-		
+		//setAdjustRadarForRobotTurn(true);   /// radar set up 
+		//setAdjustGunForRobotTurn(true);     // gun set up
 		while(true) {
+			save_table(); // make sure to save table every time we update the Q_values
+			System.out.println("initialization flag is		 "+ initialize);
+			//System.out.println("loaded Q table entry is 	 "+ Q_table[0][1]);
 			
-			for (int i=0;i<Q_table.length;i++) {
-				for (int j=0; j<Q_table[0].length;j++) {
-					
-					Q_table_double[i][j] = Double.parseDouble(Q_table[i][j]);
-				}
-			}
-			save_table();    // make sure to save table every time we update the Q_values
+
+		 
 			try {
 				load();		// load the Q_table from disk   --- necessary ?
 
 				} catch(IOException e) {
 					
 				}
+			
 			turnGunRight(360);  // this allows the robot to perform actual scanning 
+			//setTurnRadarRight(360);
+			for (int i=0;i<Q_table.length;i++) {
+				for (int j=0; j<Q_table[0].length;j++) {
+					
+					Q_table_double[i][j] = Double.parseDouble(Q_table[i][j]);
+				}
+			}
 			//Q_learning starts
 			
 			//step 1 get initial state ----works
@@ -185,8 +199,10 @@ public class Q_learning_LUT extends AdvancedRobot {
 			//step 3  find the action that would result in maximum Q_value    ---- works
 			if(Math.random()>epsilon) {
 			max_q_action = argmax(current_state_action);
+			System.out.println("I am taking greedy action");
 			}
 			else  {
+			System.out.println("I am taking random action");
 			max_q_action = randInt(1,5);
 			}
 			System.out.println("max action index is		 "+ max_q_action);
@@ -194,6 +210,7 @@ public class Q_learning_LUT extends AdvancedRobot {
 			take_action(max_q_action);
 			// step 5 , after taking action , register the new state ---- works
 			turnGunRight(360); 
+			//setTurnRadarRight(360);
 			next_state = x+""+y+""+dist+""+bearing;
 			System.out.println("next_state is		 "+ next_state);
 			//step 6 perform update Q(s,a) = Q(s,a) + alpha*(reward+gamma*Q(s',a')-Q(s,a))
@@ -221,6 +238,8 @@ public class Q_learning_LUT extends AdvancedRobot {
 	}
 	//robotStatus.getX();
 	public void onScannedRobot(ScannedRobotEvent e) {
+		//setTurnRadarRight(getHeading() - getRadarHeading() + e.getBearing());
+		//setTurnGunRight(getHeading() - getGunHeading() + e.getBearing());
 		x_test = getX();
 		y_test = getY();
 		dist_test = e.getDistance();
@@ -229,15 +248,20 @@ public class Q_learning_LUT extends AdvancedRobot {
 		y = quantize_position(getY());
 		dist = quantize_distance(e.getDistance());
 		bearing = quantize_bearing(e.getBearing());
+		
 		if (dist==1) {
-			fire(3);
+			fire(2);
 		}
 		else if(dist ==2) {
 			fire(1);
 		}
-		else if(dist ==3) {
-			fire(1);
-		}
+	//	else if(dist ==3) {
+	//		fire(1);
+	//	}
+		
+		
+		//scanDirection *= -1; // changes value from 1 to -1
+		//setTurnRadarRight(360 * scanDirection);
 		//System.out.println("distance is		 "+ dist);
 		//System.out.println("bearing is		 "+ bearing);
 		//System.out.println("actual bearing is		 "+ bearing_test);
@@ -298,7 +322,7 @@ public class Q_learning_LUT extends AdvancedRobot {
 	}
 	public  int argmax(double[] array) {
 		int index = 1;   // if the row is all zeros then just take the first action 
-		double largest = Double.MIN_VALUE;
+		double largest = -99999999;
 		// starts with index 1 because the first element is the state number ,but we are only 
 		// interested in the actions 
 		for ( int i = 1; i < array.length; i++ )
@@ -324,9 +348,8 @@ public class Q_learning_LUT extends AdvancedRobot {
 			back(100);
 		}
 		else if(action_index==3) {
-			turnGunRight(50);
 			ahead(50);
-			fire(1);
+			
 		}
 		else if(action_index==4) {
 			turnRight(90);
@@ -427,8 +450,76 @@ public class Q_learning_LUT extends AdvancedRobot {
 		} 
 	public void onBulletHit(BulletHitEvent event){
 		reward+=3;
+		turnLeft(90);
+		ahead(30);
 		} 
 	public void onHitByBullet(HitByBulletEvent event){
 		reward-=3;
-		} 
+		}
+	//wall smoothing (To make sure RL robot does not get stuck in the wall)
+	public void onHitWall(HitWallEvent e){
+		reward-=2.0;//earlier it was -2
+		double xPos=this.getX();
+		double yPos=this.getY();
+		double width=this.getBattleFieldWidth();
+		double height=this.getBattleFieldHeight();
+		if(yPos<80)//too close to the bottom
+		{
+			
+			turnLeft(getHeading() % 90);
+			//System.out.println("Get heading");
+			//System.out.println(getHeading());
+			if(getHeading()==0){turnLeft(0);}
+			if(getHeading()==90){turnLeft(90);}
+			if(getHeading()==180){turnLeft(180);}
+			if(getHeading()==270){turnRight(90);}
+			ahead(150);
+			//System.out.println("Too close to the bottom");
+			if ((this.getHeading()<180)&&(this.getHeading()>90))
+			{
+				this.setTurnLeft(90);
+			}
+			else if((this.getHeading()<270)&&(this.getHeading()>180))
+			{
+				this.setTurnRight(90);
+			}
+			
+			
+		}
+		else if(yPos>height-80){ //to close to the top
+			//System.out.println("Too close to the Top");
+			if((this.getHeading()<90)&&(this.getHeading()>0)){this.setTurnRight(90);}
+			else if((this.getHeading()<360)&&(this.getHeading()>270)){this.setTurnLeft(90);}
+			turnLeft(getHeading() % 90);
+			//System.out.println("Get heading");
+			//System.out.println(getHeading());
+			if(getHeading()==0){turnRight(180);}
+			if(getHeading()==90){turnRight(90);}
+			if(getHeading()==180){turnLeft(0);}
+			if(getHeading()==270){turnLeft(90);}
+			ahead(150);
+			
+		}
+		else if(xPos<80){
+			turnLeft(getHeading() % 90);
+			//System.out.println("Get heading");
+			//System.out.println(getHeading());
+			if(getHeading()==0){turnRight(90);}
+			if(getHeading()==90){turnLeft(0);}
+			if(getHeading()==180){turnLeft(90);}
+			if(getHeading()==270){turnRight(180);}
+			ahead(150);
+		}
+		else if(xPos>width-80){
+			turnLeft(getHeading() % 90);
+			//System.out.println("Get heading");
+			//System.out.println(getHeading());
+			if(getHeading()==0){turnLeft(90);}
+			if(getHeading()==90){turnLeft(180);}
+			if(getHeading()==180){turnRight(90);}
+			if(getHeading()==270){turnRight(0);}
+			ahead(150);
+		}
+		
+	}
 }
