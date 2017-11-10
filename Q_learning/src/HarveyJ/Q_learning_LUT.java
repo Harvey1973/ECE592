@@ -32,7 +32,7 @@ public class Q_learning_LUT extends AdvancedRobot {
 	int bearing = 0;
 	double getBearing ;
 	double Velocity ;
-
+	double turnGunAmt;
 	String current_state = null;
 	int current_state_index = 0;
 	String next_state = null;
@@ -50,7 +50,7 @@ public class Q_learning_LUT extends AdvancedRobot {
 	double [] current_state_action = new double[5];    //available actions for one particular state 
 	static int row_num = 8*6*10*4;
 	static int col_num = 6;
-	boolean initialize = true;
+	boolean initialize = false;
 	boolean explore_mode = true;
 	boolean greedy_mode = false;
 	String [][] Q_table = new String [row_num][col_num];  // This Q_table is a String matrix, use this to save Q_table on disk 
@@ -82,7 +82,7 @@ public class Q_learning_LUT extends AdvancedRobot {
 
 		PrintStream table = null;
 		try {
-			table = new PrintStream(new RobocodeFileOutputStream(getDataFile("Q_table_3.txt")));
+			table = new PrintStream(new RobocodeFileOutputStream(getDataFile("Q_table_all_random.txt")));
 			for (int i=0;i<Q_table.length;i++) {
 				table.println(Q_table[i][0]+"    "+Q_table[i][1]+"    "+Q_table[i][2]+"    "+Q_table[i][3]+"    "+Q_table[i][4]+"    "+Q_table[i][5]);
 			}
@@ -130,7 +130,7 @@ public class Q_learning_LUT extends AdvancedRobot {
 		save_reward();
 	}
 	public void load() throws IOException {
-	BufferedReader br = new BufferedReader(new FileReader(getDataFile("Q_Table_3.txt")));
+	BufferedReader br = new BufferedReader(new FileReader(getDataFile("Q_Table_all_random.txt")));
 	String line ;
 	try {
         int count_2=0;
@@ -248,7 +248,7 @@ public class Q_learning_LUT extends AdvancedRobot {
 		dist_test = e.getDistance();
 		bearing_test = e.getBearing();
 		Velocity =e.getVelocity();
-		
+		turnGunAmt =(getHeadingRadians()+e.getBearingRadians()-getGunHeadingRadians());
 		x = quantize_position(getX());
 		y = quantize_position(getY());
 		dist = quantize_distance(e.getDistance());
@@ -361,19 +361,17 @@ public class Q_learning_LUT extends AdvancedRobot {
 			
 		}
 		else if(action_index==3) {
-			ahead(50);
-			//turnGunRight(gunTurnAmt); // Try changing these to setTurnGunRight,
-			turnRight(getBearing-25); // and see how much Tracker improves...
+			
+			turnGunRight(turnGunAmt); // Try changing these to setTurnGunRight,
+			turnRight(bearing_test-25); // and see how much Tracker improves...
 			// (you'll have to make Tracker an AdvancedRobot)
 			ahead(150);
 			
 			
 		}
 		else if(action_index==4) {
-			turnRight(90);
-			back(100);
-			//turnGunRight(gunTurnAmt); // Try changing these to setTurnGunRight,
-			turnRight(getBearing-25); // and see how much Tracker improves...
+			turnGunRight(turnGunAmt); // Try changing these to setTurnGunRight,
+			turnRight(bearing_test-25); // and see how much Tracker improves...
 			// (you'll have to make Tracker an AdvancedRobot)
 			back(150);
 			
