@@ -4,6 +4,7 @@ import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.PrintStream;
+import java.io.PrintWriter;
 import java.util.Arrays;
 import java.util.Random;
 
@@ -46,7 +47,7 @@ public class Q_learning_LUT extends AdvancedRobot {
 	// hyper paramaters 
 	double alpha = 0.05;  // learning rate
 	double gamma = 0.99;  // discount factor
-	double epsilon = 0.1;
+	double epsilon = 1.0;
 	double [] current_state_action = new double[5];    //available actions for one particular state 
 	static int row_num = 8*6*10*4;
 	static int col_num = 6;
@@ -82,7 +83,7 @@ public class Q_learning_LUT extends AdvancedRobot {
 
 		PrintStream table = null;
 		try {
-			table = new PrintStream(new RobocodeFileOutputStream(getDataFile("Q_table_all_random.txt")));
+			table = new PrintStream(new RobocodeFileOutputStream(getDataFile("Q_table_eplison0_1500_run.txt")));
 			for (int i=0;i<Q_table.length;i++) {
 				table.println(Q_table[i][0]+"    "+Q_table[i][1]+"    "+Q_table[i][2]+"    "+Q_table[i][3]+"    "+Q_table[i][4]+"    "+Q_table[i][5]);
 			}
@@ -100,9 +101,9 @@ public class Q_learning_LUT extends AdvancedRobot {
 	    PrintStream w = null;
 	    try {
 	        w = new PrintStream(new RobocodeFileOutputStream(getDataFile("reward.txt")));
-	        for (int i=0;i<reward_array.length;i++) {
-	            w.println(reward_array[i]);
-	        }
+	        //for (int i=0;i<reward_array.length;i++) {
+	        w.println(total_reward);
+	            
 	    } catch (IOException e) {
 	        e.printStackTrace();
 	    }finally {
@@ -111,18 +112,36 @@ public class Q_learning_LUT extends AdvancedRobot {
 	    }
 
 	}
+	/*
+	public void save_reward_1() {
+
+	    try {
+	       PrintWriter  w = new PrintWriter(new RobocodeFileOutputStream(getDataFile("reward.txt")),true);
+	        //for (int i=0;i<reward_array.length;i++) {
+	        w.println(total_reward);
+	            
+	    } catch (IOException e) {
+	        e.printStackTrace();
+	    }finally {
+	        w.flush();
+	        w.close();
+	    }
+
+	}
+	*/
 	public void onRoundEnded(RoundEndedEvent e) {
 	    System.out.println("cumulative reward of one full battle is "); 
 	    System.out.println(total_reward);
 	    System.out.println("index number ");    
 	    System.out.println(getRoundNum());
+	    /*
 	    reward_array[getRoundNum()]=total_reward;
 	    for(int i=0;i<reward_array.length;i++){
 	        System.out.println(reward_array[i]);
 	        System.out.println();
 	    }
 	    
-	    
+	    */
 	   // index1=index1+1;
 	    save_reward();
 	    }
@@ -130,7 +149,7 @@ public class Q_learning_LUT extends AdvancedRobot {
 		save_reward();
 	}
 	public void load() throws IOException {
-	BufferedReader br = new BufferedReader(new FileReader(getDataFile("Q_Table_all_random.txt")));
+	BufferedReader br = new BufferedReader(new FileReader(getDataFile("Q_table_eplison0_1500_run.txt")));
 	String line ;
 	try {
         int count_2=0;
@@ -209,25 +228,31 @@ public class Q_learning_LUT extends AdvancedRobot {
 			max_q_action = randInt(1,5);
 			}
 			System.out.println("max action index is		 "+ max_q_action);
-			// step 4 take action  ---- works
+			
+			// find current state index and current q value  --- works
+			current_state_index =state_index(current_state,Q_table);
+			current_q = Double.parseDouble(Q_table[current_state_index][max_q_action]);
+			System.out.println("current_state index 	is		 "+ current_state_index);
+			System.out.println("current_q value is 		 "+ current_q);
+			reward = 0.0;
+			
+			// step 4 take action and observe reward  ---- works
 			take_action(max_q_action);
+
 			// step 5 , after taking action , register the new state ---- works
 			turnGunRight(360); 
 			//setTurnRadarRight(360);
 			next_state = x+""+y+""+dist+""+bearing;
 			System.out.println("next_state is		 "+ next_state);
 			//step 6 perform update Q(s,a) = Q(s,a) + alpha*(reward+gamma*Q(s',a')-Q(s,a))
-			// find current state index and current q value  --- works
-			current_state_index =state_index(current_state,Q_table);
-			current_q = Q_table_double[current_state_index][max_q_action];
-			System.out.println("current_state index 	is		 "+ current_state_index);
-			System.out.println("current_q value is 		 "+ current_q);
+
 			// find next state index ---works
 			next_state_index = state_index(next_state,Q_table);
 			System.out.println("next_state index 	is		 "+ next_state_index);
-			next_q = max(Q_table_double[next_state_index]);
+			next_q = max((Q_table_double[next_state_index]));
 			System.out.println("next_q 	is		 "+ next_q);
 			//perform the update
+			System.out.println("The observed reward is 		 "+ reward);
 			Q_table_double[current_state_index][max_q_action] += alpha*(reward+gamma*next_q-current_q);
 			System.out.println("updated Q value 	is		 "+ Q_table_double[current_state_index][max_q_action]);
 			Q_table[current_state_index][max_q_action] = Double.toString(Q_table_double[current_state_index][max_q_action]); // -- works 
@@ -257,9 +282,9 @@ public class Q_learning_LUT extends AdvancedRobot {
 		if (dist==1) {
 			fire(2);
 		}
-		else if(dist ==2) {
-			fire(1);
-		}
+		//else if(dist ==2) {
+		//	fire(1);
+		//}
 	//	else if(dist ==3) {
 	//		fire(1);
 	//	}
@@ -346,38 +371,48 @@ public class Q_learning_LUT extends AdvancedRobot {
 		int moveDirection=+1; 
 		int moveDirection_1=-1;
 		if(action_index ==1) {
+			ahead(100);
+			/*
 			if (Velocity == 0)
 				moveDirection *= 1;
 			setTurnRight(getBearing + 90);
 			setAhead(150 * moveDirection);
-			
+			*/
 		}
 		else if (action_index==2) {
+			back(100);
+			/*
 		    moveDirection_1=-1;  
 			if (Velocity == 0)
 				moveDirection_1 *= 1;
 			setTurnRight(getBearing + 90);
 			setAhead(150 * moveDirection_1);
+			*/
 			
 		}
 		else if(action_index==3) {
-			
+			/*
 			turnGunRight(turnGunAmt); // Try changing these to setTurnGunRight,
 			turnRight(bearing_test-25); // and see how much Tracker improves...
 			// (you'll have to make Tracker an AdvancedRobot)
-			ahead(150);
+			 */ 
+			turnLeft(90); 
+			ahead(100);
 			
 			
 		}
 		else if(action_index==4) {
+			/*
 			turnGunRight(turnGunAmt); // Try changing these to setTurnGunRight,
 			turnRight(bearing_test-25); // and see how much Tracker improves...
 			// (you'll have to make Tracker an AdvancedRobot)
-			back(150);
+			 */
+			turnRight(90);
+			ahead(100);
 			
 		}
 		else if(action_index == 5) {
-			turnLeft(90);
+			turnLeft(180);
 			ahead(100);
 		}
 	} // take action works
@@ -471,11 +506,12 @@ public class Q_learning_LUT extends AdvancedRobot {
 		} 
 	public void onBulletHit(BulletHitEvent event){
 		reward+=3;
-		turnLeft(90);
-		ahead(30);
+
 		} 
 	public void onHitByBullet(HitByBulletEvent event){
 		reward-=3;
+		turnLeft(90);
+		ahead(100);
 		}
 	//wall smoothing (To make sure RL robot does not get stuck in the wall)
 	public void onHitWall(HitWallEvent e){
