@@ -1,15 +1,14 @@
 package HarveyJ;
 
-import java.awt.geom.Point2D;
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.util.Arrays;
 import java.util.Random;
-
+import robocode.*;
+import java.awt.geom.Point2D;
 import robocode.AdvancedRobot;
-import robocode.BattleEndedEvent;
 import robocode.BulletHitEvent;
 import robocode.HitByBulletEvent;
 import robocode.HitRobotEvent;
@@ -20,15 +19,13 @@ import robocode.ScannedRobotEvent;
 
 public class Q_learning_LUT extends AdvancedRobot {
 	public double PI = Math.PI;
-	public long ctime;
-	public double changehead;
-	public double speed;
-	public double head;
 	double y_test;
 	double x_test;
 	double dist_test;
 	double bearing_test;
 	private byte scanDirection = 1;
+	private AdvancedEnemyBot enemy = new AdvancedEnemyBot();
+
 	// state representations will be a 4 tuple{x_a,y_a,distance_to_enemy,Bearing}
 	// below is the quantized states
 	int x = 0;// x _coordinates are quantized in to integers in range [0,8] representing 0-800 pixels
@@ -56,7 +53,7 @@ public class Q_learning_LUT extends AdvancedRobot {
 	double [] current_state_action = new double[5];    //available actions for one particular state 
 	static int row_num = 8*6*10*4;
 	static int col_num = 6;
-	boolean initialize = true;
+	boolean initialize = false;
 	boolean explore_mode = true;
 	boolean greedy_mode = false;
 	String [][] Q_table = new String [row_num][col_num];  // This Q_table is a String matrix, use this to save Q_table on disk 
@@ -84,38 +81,12 @@ public class Q_learning_LUT extends AdvancedRobot {
 					}
 				}// Initializing function works
 	
-	  double NormaliseBearing(double ang) {
-		    if (ang > PI)
-		      ang -= 2*PI;
-		    if (ang < -PI)
-		      ang += 2*PI;
-		    return ang;
-		  }
-	  public Point2D.Double guessPosition(long when)
-	  {
-	    double diff = when - ctime;
-	    double newY, newX;
 
-	    /**if the change in heading is significant, use circular targeting**/
-	    if (Math.abs(changehead) > 0.00001)
-	    {
-	      double radius = speed/changehead;
-	      double tothead = diff * changehead;
-	      newY = y + (Math.sin(head + tothead) * radius) - (Math.sin(head) * radius);
-	      newX = x + (Math.cos(head) * radius) - (Math.cos(head + tothead) * radius);
-	    }
-	    /**If the change in heading is insignificant, use linear**/
-	    else {
-	      newY = y + Math.cos(head) * speed * diff;
-	      newX = x + Math.sin(head) * speed * diff;
-	    }
-	    return new Point2D.Double(newX, newY);
-	  }
 	public void save_table() {
 
 		PrintStream table = null;
 		try {
-			table = new PrintStream(new RobocodeFileOutputStream(getDataFile("Q_table_eplison0.1_1500_run.txt")));
+			table = new PrintStream(new RobocodeFileOutputStream(getDataFile("Q_table_eplison0.1_3000_run.txt")));
 			for (int i=0;i<Q_table.length;i++) {
 				table.println(Q_table[i][0]+"    "+Q_table[i][1]+"    "+Q_table[i][2]+"    "+Q_table[i][3]+"    "+Q_table[i][4]+"    "+Q_table[i][5]);
 			}
@@ -129,7 +100,7 @@ public class Q_learning_LUT extends AdvancedRobot {
 	} // save function works
 	
 	public void load1() throws IOException {
-		BufferedReader br = new BufferedReader(new FileReader(getDataFile("reward_1500.txt")));
+		BufferedReader br = new BufferedReader(new FileReader(getDataFile("reward_3000.txt")));
 		String line ;
 		//System.out.println("the length of reward array is" + reward_array.length);
 		try {
@@ -157,7 +128,7 @@ public class Q_learning_LUT extends AdvancedRobot {
 
 			PrintStream w = null;
 			try {
-				w = new PrintStream(new RobocodeFileOutputStream(getDataFile("reward_1500.txt")));
+				w = new PrintStream(new RobocodeFileOutputStream(getDataFile("reward_3000.txt")));
 				for (int i=0;i<reward_array.length;i++) {
 					w.println(reward_array[i]);
 				}
@@ -207,7 +178,7 @@ public void onRoundEnded(RoundEndedEvent e_1) {
 	   }
 	
 	public void load() throws IOException {
-	BufferedReader br = new BufferedReader(new FileReader(getDataFile("Q_table_eplison0.1_1500_run.txt")));
+	BufferedReader br = new BufferedReader(new FileReader(getDataFile("Q_table_eplison0.1_3000_run.txt")));
 	String line ;
 	try {
         int count_2=0;
@@ -241,9 +212,9 @@ public void onRoundEnded(RoundEndedEvent e_1) {
 		} catch(IOException e) {
 			
 		}
-		//setAdjustRadarForRobotTurn(true);   /// radar set up 
-		//setAdjustGunForRobotTurn(true);     // gun set up
-		turnGunRight(360);  // this allows the robot to perform actual scanning 
+		setAdjustRadarForRobotTurn(true);   /// radar set up 
+		setAdjustGunForRobotTurn(true);     // gun set up
+		setTurnRadarRight(360);  // this allows the robot to perform actual scanning 
 		while(true) {
 			save_table(); // make sure to save table every time we update the Q_values
 			System.out.println("initialization flag is		 "+ initialize);
@@ -299,7 +270,9 @@ public void onRoundEnded(RoundEndedEvent e_1) {
 			take_action(max_q_action);
 
 			// step 5 , after taking action , register the new state ---- works
-			turnGunRight(360); 
+			setTurnRadarRight(360); 
+			doGun();
+			execute();     // carry out all queued actions
 			//setTurnRadarRight(360);
 			next_state = x+""+y+""+dist+""+bearing;
 			System.out.println("next_state is		 "+ next_state);
@@ -328,24 +301,29 @@ public void onRoundEnded(RoundEndedEvent e_1) {
 	}
 	//robotStatus.getX();
 	public void onScannedRobot(ScannedRobotEvent e) {
-		//setTurnRadarRight(getHeading() - getRadarHeading() + e.getBearing());
-		//setTurnGunRight(getHeading() - getGunHeading() + e.getBearing());
+
 		x_test = getX();
 		y_test = getY();
 		dist_test = e.getDistance();
 		bearing_test = e.getBearing();
 		Velocity =e.getVelocity();
-		turnGunAmt =(getHeadingRadians()+e.getBearingRadians()-getGunHeadingRadians());
+
 		x = quantize_position(getX());
 		y = quantize_position(getY());
 		dist = quantize_distance(e.getDistance());
 		bearing = quantize_bearing(e.getBearing());
-		ctime = getTime();
-		
-		head = e.getHeadingRadians();
-		if (dist==1) {
-			fire(3);
+
+		if ( enemy.none() || e.getDistance() < enemy.getDistance() - 70 ||
+				e.getName().equals(enemy.getName())) {
+
+			// track him using the NEW update method
+			enemy.update(e, this);
 		}
+		
+
+		//if (dist==1) {
+		//	fire(3);
+		//}
 		//else if(dist ==2) {
 		//	fire(1);
 		//}
@@ -354,15 +332,71 @@ public void onRoundEnded(RoundEndedEvent e_1) {
 	//	}
 		
 		
-		//scanDirection *= -1; // changes value from 1 to -1
-		//setTurnRadarRight(360 * scanDirection);
-		//System.out.println("distance is		 "+ dist);
-		//System.out.println("bearing is		 "+ bearing);
-		//System.out.println("actual bearing is		 "+ bearing_test);
-		//System.out.println("actual distance is		 "+ dist_test);
+
 
 		
 		
+	}
+	public void onRobotDeath(RobotDeathEvent e) {
+		// see if the robot we were tracking died
+		if (e.getName().equals(enemy.getName())) {
+			enemy.reset();
+		}
+	}
+	void doGun() {
+
+		// don't shoot if I've got no enemy
+		if (enemy.none())
+			return;
+
+		// calculate firepower based on distance
+		double firePower = Math.min(500 / enemy.getDistance(), 3);
+		// calculate speed of bullet
+		double bulletSpeed = 20 - firePower * 3;
+		// distance = rate * time, solved for time
+		long time = (long)(enemy.getDistance() / bulletSpeed);
+
+		// calculate gun turn to predicted x,y location
+		double futureX = enemy.getFutureX(time);
+		double futureY = enemy.getFutureY(time);
+		double absDeg = absoluteBearing(getX(), getY(), futureX, futureY);
+		// non-predictive firing can be done like this:
+		//double absDeg = absoluteBearing(getX(), getY(), enemy.getX(), enemy.getY());
+
+		// turn the gun to the predicted x,y location
+		setTurnGunRight(normalizeBearing(absDeg - getGunHeading()));
+
+		// if the gun is cool and we're pointed in the right direction, shoot!
+		if (getGunHeat() == 0 && Math.abs(getGunTurnRemaining()) < 10) {
+			setFire(firePower);
+		}
+	}
+	// computes the absolute bearing between two points
+	double absoluteBearing(double x1, double y1, double x2, double y2) {
+		double xo = x2-x1;
+		double yo = y2-y1;
+		double hyp = Point2D.distance(x1, y1, x2, y2);
+		double arcSin = Math.toDegrees(Math.asin(xo / hyp));
+		double bearing = 0;
+
+		if (xo > 0 && yo > 0) { // both pos: lower-Left
+			bearing = arcSin;
+		} else if (xo < 0 && yo > 0) { // x neg, y pos: lower-right
+			bearing = 360 + arcSin; // arcsin is negative here, actually 360 - ang
+		} else if (xo > 0 && yo < 0) { // x pos, y neg: upper-left
+			bearing = 180 - arcSin;
+		} else if (xo < 0 && yo < 0) { // both neg: upper-right
+			bearing = 180 - arcSin; // arcsin is negative here, actually 180 + ang
+		}
+
+		return bearing;
+	}
+
+	// normalizes a bearing to between +180 and -180
+	double normalizeBearing(double angle) {
+		while (angle >  180) angle -= 360;
+		while (angle < -180) angle += 360;
+		return angle;
 	}
 	
 	/* used in exlpore mode to randomly pick  actions  */
@@ -419,6 +453,10 @@ public void onRoundEnded(RoundEndedEvent e_1) {
 		double largest = -99999999;
 		// starts with index 1 because the first element is the state number ,but we are only 
 		// interested in the actions 
+		if (all_zero(array)){
+			index = randInt(1,5);
+		}
+		else {
 		for ( int i = 1; i < array.length; i++ )
 		{
 		    if ( array[i] > largest )
@@ -427,8 +465,19 @@ public void onRoundEnded(RoundEndedEvent e_1) {
 		        index = i;
 		    }
 		}
+		
+		}
 		return index ;
 		
+	}
+	public boolean all_zero(double array[]) {
+		boolean all0 = true;
+		for (int i = 1 ; i< array.length;i++) {
+			if(array[i]!=0) {
+				all0 = false;
+			}
+		}
+		return all0;
 	}
 	public void take_action(int action_index) {
 		// circle our enemy
