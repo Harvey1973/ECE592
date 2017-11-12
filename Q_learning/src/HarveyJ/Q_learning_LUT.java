@@ -48,7 +48,7 @@ public class Q_learning_LUT extends AdvancedRobot {
 	double reward = 0.0;
 	double total_reward_per_action = 0.0;
 	double cum_reward;
-	double [] reward_array = new double [1000];   // record rewards for multiple battles
+	double [] reward_array = new double [1500];   // record rewards for multiple battles
 	// hyper paramaters 
 	double alpha = 0.05;  // learning rate
 	double gamma = 0.99;  // discount factor
@@ -56,7 +56,7 @@ public class Q_learning_LUT extends AdvancedRobot {
 	double [] current_state_action = new double[5];    //available actions for one particular state 
 	static int row_num = 8*6*10*4;
 	static int col_num = 6;
-	boolean initialize = false;
+	boolean initialize = true;
 	boolean explore_mode = true;
 	boolean greedy_mode = false;
 	String [][] Q_table = new String [row_num][col_num];  // This Q_table is a String matrix, use this to save Q_table on disk 
@@ -115,7 +115,7 @@ public class Q_learning_LUT extends AdvancedRobot {
 
 		PrintStream table = null;
 		try {
-			table = new PrintStream(new RobocodeFileOutputStream(getDataFile("Q_table_eplison0.1_1000_run.txt")));
+			table = new PrintStream(new RobocodeFileOutputStream(getDataFile("Q_table_eplison0.1_1500_run.txt")));
 			for (int i=0;i<Q_table.length;i++) {
 				table.println(Q_table[i][0]+"    "+Q_table[i][1]+"    "+Q_table[i][2]+"    "+Q_table[i][3]+"    "+Q_table[i][4]+"    "+Q_table[i][5]);
 			}
@@ -129,7 +129,7 @@ public class Q_learning_LUT extends AdvancedRobot {
 	} // save function works
 	
 	public void load1() throws IOException {
-		BufferedReader br = new BufferedReader(new FileReader(getDataFile("reward_1000.txt")));
+		BufferedReader br = new BufferedReader(new FileReader(getDataFile("reward_1500.txt")));
 		String line ;
 		//System.out.println("the length of reward array is" + reward_array.length);
 		try {
@@ -157,7 +157,7 @@ public class Q_learning_LUT extends AdvancedRobot {
 
 			PrintStream w = null;
 			try {
-				w = new PrintStream(new RobocodeFileOutputStream(getDataFile("reward_1000.txt")));
+				w = new PrintStream(new RobocodeFileOutputStream(getDataFile("reward_1500.txt")));
 				for (int i=0;i<reward_array.length;i++) {
 					w.println(reward_array[i]);
 				}
@@ -207,7 +207,7 @@ public void onRoundEnded(RoundEndedEvent e_1) {
 	   }
 	
 	public void load() throws IOException {
-	BufferedReader br = new BufferedReader(new FileReader(getDataFile("Q_table_eplison0.1_1000_run.txt")));
+	BufferedReader br = new BufferedReader(new FileReader(getDataFile("Q_table_eplison0.1_1500_run.txt")));
 	String line ;
 	try {
         int count_2=0;
@@ -344,7 +344,7 @@ public void onRoundEnded(RoundEndedEvent e_1) {
 		
 		head = e.getHeadingRadians();
 		if (dist==1) {
-			fire(2);
+			fire(3);
 		}
 		//else if(dist ==2) {
 		//	fire(1);
@@ -578,13 +578,15 @@ public void onRoundEnded(RoundEndedEvent e_1) {
 	public void onHitByBullet(HitByBulletEvent event){
 		double reward_3=-3;
 		total_reward_per_action += reward_3;
-		System.out.println(" GETTING HIT");
+		System.out.println(" GETTING HIT BY BULLET ");
 		//turnLeft(90);
 		//ahead(100);
 		}
 	//wall smoothing (To make sure RL robot does not get stuck in the wall)
 	public void onHitWall(HitWallEvent e){
-		reward-=2.0;//earlier it was -2
+		double reward_4=-2.0;//earlier it was -2
+		total_reward_per_action += reward_4;
+		System.out.println(" HITTING A WALL ");
 		double xPos=this.getX();
 		double yPos=this.getY();
 		double width=this.getBattleFieldWidth();
@@ -600,7 +602,7 @@ public void onRoundEnded(RoundEndedEvent e_1) {
 			if(getHeading()==180){turnLeft(180);}
 			if(getHeading()==270){turnRight(90);}
 			ahead(150);
-			//System.out.println("Too close to the bottom");
+			System.out.println("Too close to the bottom!!!!!!!");
 			if ((this.getHeading()<180)&&(this.getHeading()>90))
 			{
 				this.setTurnLeft(90);
@@ -613,7 +615,7 @@ public void onRoundEnded(RoundEndedEvent e_1) {
 			
 		}
 		else if(yPos>height-80){ //to close to the top
-			//System.out.println("Too close to the Top");
+			System.out.println("Too close to the Top!!!!!!!");
 			if((this.getHeading()<90)&&(this.getHeading()>0)){this.setTurnRight(90);}
 			else if((this.getHeading()<360)&&(this.getHeading()>270)){this.setTurnLeft(90);}
 			turnLeft(getHeading() % 90);
