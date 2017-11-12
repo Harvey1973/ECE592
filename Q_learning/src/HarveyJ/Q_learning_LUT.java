@@ -45,7 +45,7 @@ public class Q_learning_LUT extends AdvancedRobot {
 	double reward = 0.0;
 	double total_reward_per_action = 0.0;
 	double cum_reward;
-	double [] reward_array = new double [1500];   // record rewards for multiple battles
+	double [] reward_array = new double [3000];   // record rewards for multiple battles
 	// hyper paramaters 
 	double alpha = 0.05;  // learning rate
 	double gamma = 0.99;  // discount factor
@@ -212,9 +212,10 @@ public void onRoundEnded(RoundEndedEvent e_1) {
 		} catch(IOException e) {
 			
 		}
-		setAdjustRadarForRobotTurn(true);   /// radar set up 
-		setAdjustGunForRobotTurn(true);     // gun set up
-		setTurnRadarRight(360);  // this allows the robot to perform actual scanning 
+		//setAdjustRadarForRobotTurn(true);   /// radar set up 
+		//setAdjustGunForRobotTurn(true);     // gun set up
+		//setTurnRadarRight(360);  // this allows the robot to perform actual scanning 
+		turnGunRight(360);
 		while(true) {
 			save_table(); // make sure to save table every time we update the Q_values
 			System.out.println("initialization flag is		 "+ initialize);
@@ -270,9 +271,10 @@ public void onRoundEnded(RoundEndedEvent e_1) {
 			take_action(max_q_action);
 
 			// step 5 , after taking action , register the new state ---- works
-			setTurnRadarRight(360); 
-			doGun();
-			execute();     // carry out all queued actions
+			turnGunRight(360);
+			//setTurnRadarRight(360); 
+			//doGun();
+			//execute();     // carry out all queued actions
 			//setTurnRadarRight(360);
 			next_state = x+""+y+""+dist+""+bearing;
 			System.out.println("next_state is		 "+ next_state);
@@ -321,9 +323,9 @@ public void onRoundEnded(RoundEndedEvent e_1) {
 		}
 		
 
-		//if (dist==1) {
-		//	fire(3);
-		//}
+		if (dist==1) {
+			fire(3);
+		}
 		//else if(dist ==2) {
 		//	fire(1);
 		//}
