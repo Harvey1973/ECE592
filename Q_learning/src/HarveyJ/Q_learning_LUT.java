@@ -1,10 +1,10 @@
 package HarveyJ;
 
+import java.awt.geom.Point2D;
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.PrintStream;
-import java.io.PrintWriter;
 import java.util.Arrays;
 import java.util.Random;
 
@@ -19,7 +19,11 @@ import robocode.RoundEndedEvent;
 import robocode.ScannedRobotEvent;
 
 public class Q_learning_LUT extends AdvancedRobot {
-
+	public double PI = Math.PI;
+	public long ctime;
+	public double changehead;
+	public double speed;
+	public double head;
 	double y_test;
 	double x_test;
 	double dist_test;
@@ -42,12 +46,13 @@ public class Q_learning_LUT extends AdvancedRobot {
 	double current_q = 0.0;
 	double next_q = 0.0;
 	double reward = 0.0;
-	double total_reward = 0.0;
-	double [] reward_array = new double [15000];   // record rewards for multiple battles
+	double total_reward_per_action = 0.0;
+	double cum_reward;
+	double [] reward_array = new double [1000];   // record rewards for multiple battles
 	// hyper paramaters 
 	double alpha = 0.05;  // learning rate
 	double gamma = 0.99;  // discount factor
-	double epsilon = 1.0;
+	double epsilon = 0.1;
 	double [] current_state_action = new double[5];    //available actions for one particular state 
 	static int row_num = 8*6*10*4;
 	static int col_num = 6;
@@ -56,7 +61,7 @@ public class Q_learning_LUT extends AdvancedRobot {
 	boolean greedy_mode = false;
 	String [][] Q_table = new String [row_num][col_num];  // This Q_table is a String matrix, use this to save Q_table on disk 
 	double [][] Q_table_double = new double[row_num][col_num]; // This Q_table is a double matrix , use this to perform numeric operations 
-	
+	int index1 = 0;
 	public void initialize_Q_table(String[][]Q_table) {
 		System.out.println("Initializing Q Table");
 		// An example entry of Q_table will be like 
@@ -79,11 +84,38 @@ public class Q_learning_LUT extends AdvancedRobot {
 					}
 				}// Initializing function works
 	
+	  double NormaliseBearing(double ang) {
+		    if (ang > PI)
+		      ang -= 2*PI;
+		    if (ang < -PI)
+		      ang += 2*PI;
+		    return ang;
+		  }
+	  public Point2D.Double guessPosition(long when)
+	  {
+	    double diff = when - ctime;
+	    double newY, newX;
+
+	    /**if the change in heading is significant, use circular targeting**/
+	    if (Math.abs(changehead) > 0.00001)
+	    {
+	      double radius = speed/changehead;
+	      double tothead = diff * changehead;
+	      newY = y + (Math.sin(head + tothead) * radius) - (Math.sin(head) * radius);
+	      newX = x + (Math.cos(head) * radius) - (Math.cos(head + tothead) * radius);
+	    }
+	    /**If the change in heading is insignificant, use linear**/
+	    else {
+	      newY = y + Math.cos(head) * speed * diff;
+	      newX = x + Math.sin(head) * speed * diff;
+	    }
+	    return new Point2D.Double(newX, newY);
+	  }
 	public void save_table() {
 
 		PrintStream table = null;
 		try {
-			table = new PrintStream(new RobocodeFileOutputStream(getDataFile("Q_table_eplison0_1500_run.txt")));
+			table = new PrintStream(new RobocodeFileOutputStream(getDataFile("Q_table_eplison0.1_1000_run.txt")));
 			for (int i=0;i<Q_table.length;i++) {
 				table.println(Q_table[i][0]+"    "+Q_table[i][1]+"    "+Q_table[i][2]+"    "+Q_table[i][3]+"    "+Q_table[i][4]+"    "+Q_table[i][5]);
 			}
@@ -96,60 +128,86 @@ public class Q_learning_LUT extends AdvancedRobot {
 
 	} // save function works
 	
-	public void save_reward() {
+	public void load1() throws IOException {
+		BufferedReader br = new BufferedReader(new FileReader(getDataFile("reward_1000.txt")));
+		String line ;
+		//System.out.println("the length of reward array is" + reward_array.length);
+		try {
+		    int count_2=0;
+		    while ((line= br.readLine()) != null) {
+		    	String splitLine[] = line.split("    ");
 
-	    PrintStream w = null;
-	    try {
-	        w = new PrintStream(new RobocodeFileOutputStream(getDataFile("reward.txt")));
-	        //for (int i=0;i<reward_array.length;i++) {
-	        w.println(total_reward);
-	            
-	    } catch (IOException e) {
-	        e.printStackTrace();
-	    }finally {
-	        w.flush();
-	        w.close();
-	    }
+				//System.out.println("reward_array[m] is " + reward_array[count_2]);
+				//System.out.println("splitline[m] is " + splitLine[0]);
+				reward_array[count_2]=Double.parseDouble(splitLine[0]); 
+				count_2+=1;
+				
+				//System.out.println("reward_array[m] has PRINTED OUT  " + count_2 + "	times" );
+		    	
+		    }
+		    //System.out.println("the last line loaded Q table entry is 	 "+ Arrays.toString(Q_table[count_2-1]));
+		    
+		} catch (IOException e) {
+			
+		}
+			br.close();
 
+		}// load function works
+		public void save1() {
+
+			PrintStream w = null;
+			try {
+				w = new PrintStream(new RobocodeFileOutputStream(getDataFile("reward_1000.txt")));
+				for (int i=0;i<reward_array.length;i++) {
+					w.println(reward_array[i]);
+				}
+			} catch (IOException e) {
+				e.printStackTrace();
+			}finally {
+				w.flush();
+				w.close();
+			}
+
+		}//save	
+public void onRoundEnded(RoundEndedEvent e_1) {
+	System.out.println("cumulative reward of one full battle is ");	
+	System.out.println(cum_reward);
+	System.out.println("index number ");	
+	System.out.println(getRoundNum());
+	try{
+		load1();
+	}	catch (IOException e) {
+		
 	}
 	/*
-	public void save_reward_1() {
-
-	    try {
-	       PrintWriter  w = new PrintWriter(new RobocodeFileOutputStream(getDataFile("reward.txt")),true);
-	        //for (int i=0;i<reward_array.length;i++) {
-	        w.println(total_reward);
-	            
-	    } catch (IOException e) {
-	        e.printStackTrace();
-	    }finally {
-	        w.flush();
-	        w.close();
-	    }
-
+	System.out.println("The previous reward array is  ");
+	for(int i=0;i<reward_array.length;i++){
+		System.out.println(reward_array[i]);
+		System.out.println();
 	}
 	*/
-	public void onRoundEnded(RoundEndedEvent e) {
-	    System.out.println("cumulative reward of one full battle is "); 
-	    System.out.println(total_reward);
-	    System.out.println("index number ");    
-	    System.out.println(getRoundNum());
-	    /*
-	    reward_array[getRoundNum()]=total_reward;
-	    for(int i=0;i<reward_array.length;i++){
-	        System.out.println(reward_array[i]);
-	        System.out.println();
-	    }
-	    
-	    */
-	   // index1=index1+1;
-	    save_reward();
-	    }
-	public void onBattleEnded(BattleEndedEvent e) {
-		save_reward();
+	reward_array[getRoundNum()]=cum_reward;
+	save1();
+	try{
+		load1();
 	}
+	catch (IOException e) {
+		
+	}
+	/*
+	System.out.println("The current reward array is");
+	for(int i=0;i<reward_array.length;i++){
+		System.out.println(reward_array[i]);
+		System.out.println();
+	}
+	
+	*/
+	index1=index1+1;
+	
+	   }
+	
 	public void load() throws IOException {
-	BufferedReader br = new BufferedReader(new FileReader(getDataFile("Q_table_eplison0_1500_run.txt")));
+	BufferedReader br = new BufferedReader(new FileReader(getDataFile("Q_table_eplison0.1_1000_run.txt")));
 	String line ;
 	try {
         int count_2=0;
@@ -185,6 +243,7 @@ public class Q_learning_LUT extends AdvancedRobot {
 		}
 		//setAdjustRadarForRobotTurn(true);   /// radar set up 
 		//setAdjustGunForRobotTurn(true);     // gun set up
+		turnGunRight(360);  // this allows the robot to perform actual scanning 
 		while(true) {
 			save_table(); // make sure to save table every time we update the Q_values
 			System.out.println("initialization flag is		 "+ initialize);
@@ -199,7 +258,7 @@ public class Q_learning_LUT extends AdvancedRobot {
 					
 				}
 			
-			turnGunRight(360);  // this allows the robot to perform actual scanning 
+
 			//setTurnRadarRight(360);
 			for (int i=0;i<Q_table.length;i++) {
 				for (int j=0; j<Q_table[0].length;j++) {
@@ -234,7 +293,7 @@ public class Q_learning_LUT extends AdvancedRobot {
 			current_q = Double.parseDouble(Q_table[current_state_index][max_q_action]);
 			System.out.println("current_state index 	is		 "+ current_state_index);
 			System.out.println("current_q value is 		 "+ current_q);
-			reward = 0.0;
+			total_reward_per_action = 0.0;
 			
 			// step 4 take action and observe reward  ---- works
 			take_action(max_q_action);
@@ -252,11 +311,14 @@ public class Q_learning_LUT extends AdvancedRobot {
 			next_q = max((Q_table_double[next_state_index]));
 			System.out.println("next_q 	is		 "+ next_q);
 			//perform the update
-			System.out.println("The observed reward is 		 "+ reward);
-			Q_table_double[current_state_index][max_q_action] += alpha*(reward+gamma*next_q-current_q);
+			System.out.println("The observed reward is 		 "+ total_reward_per_action);
+			Q_table_double[current_state_index][max_q_action] += alpha*(total_reward_per_action+gamma*next_q-current_q);
 			System.out.println("updated Q value 	is		 "+ Q_table_double[current_state_index][max_q_action]);
+			System.out.println("The difference of old Q value and updated Q value is		 "+(Q_table_double[current_state_index][max_q_action]-current_q));
+			
 			Q_table[current_state_index][max_q_action] = Double.toString(Q_table_double[current_state_index][max_q_action]); // -- works 
-			total_reward += reward;	
+			cum_reward += total_reward_per_action;	
+			
 			
 			
 			
@@ -278,7 +340,9 @@ public class Q_learning_LUT extends AdvancedRobot {
 		y = quantize_position(getY());
 		dist = quantize_distance(e.getDistance());
 		bearing = quantize_bearing(e.getBearing());
+		ctime = getTime();
 		
+		head = e.getHeadingRadians();
 		if (dist==1) {
 			fire(2);
 		}
@@ -502,16 +566,21 @@ public class Q_learning_LUT extends AdvancedRobot {
 	}
 	// reward functions 
 	public void onHitRobot(HitRobotEvent event){
-		reward-=2;
+		double reward_1 =-2;
+		total_reward_per_action += reward_1;
+		System.out.println("HITT robot");
 		} 
 	public void onBulletHit(BulletHitEvent event){
-		reward+=3;
-
+		double reward_2=3;
+		total_reward_per_action += reward_2;
+		System.out.println("HITTING BULLET");
 		} 
 	public void onHitByBullet(HitByBulletEvent event){
-		reward-=3;
-		turnLeft(90);
-		ahead(100);
+		double reward_3=-3;
+		total_reward_per_action += reward_3;
+		System.out.println(" GETTING HIT");
+		//turnLeft(90);
+		//ahead(100);
 		}
 	//wall smoothing (To make sure RL robot does not get stuck in the wall)
 	public void onHitWall(HitWallEvent e){
