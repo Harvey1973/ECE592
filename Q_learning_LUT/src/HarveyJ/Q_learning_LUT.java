@@ -37,19 +37,20 @@ public class Q_learning_LUT extends AdvancedRobot {
 	double total_reward_per_action = 0.0;
 	double cum_reward;
 	double [] reward_array = new double [4500];   // record rewards for multiple battles
-	public static double [] win_rate = new double [1000];
+	public static double [] win_rate = new double [1500];
 	public static int win_count = 0;
 	public static int index_win = 0;
 	// hyper paramaters 
 	double alpha = 0.15;  // learning rate
 	double gamma = 0.9;  // discount factor
-	double epsilon = 0.0;
+	double epsilon = 1.0;
 	
 	static int row_num = 8*6*10*4;
 	static int col_num = 5;
 	boolean initialize = false;
 	boolean learning = true ;
 	boolean offpolicy = true;
+	boolean synchrnous = true;
 	public static double [][] Q_table = new double [row_num][col_num];  // This Q_table is a String matrix, use this to save Q_table on disk 
 	double [][] Q_table_double = new double[row_num][col_num]; // This Q_table is a double matrix , use this to perform numeric operations 
 	public static int index1 = 0;
@@ -324,37 +325,48 @@ public void onRoundEnded(RoundEndedEvent e_1) {
 		return all0;
 	}
 	public void take_action(int action_index) {
+		if (synchrnous) {
 		if(action_index ==0) {
 			ahead(100);
-			//setAhead(200);
 
 		}
 		else if (action_index==1) {
 			back(100);
-			//setBack(200);
-
 		}
 		else if(action_index==2) {
-
-			//setTurnLeft(90); 
-			//setAhead(200);
 			turnLeft(90);
 			ahead(100);
-			
-			
 		}
 		else if(action_index==3) {
-			//setTurnRight(90);
-			//setAhead(100);
 			turnRight(90);
 			ahead(100);
-			
 		}
 		else if(action_index == 4) {
-			//setTurnLeft(180);
-			//setAhead(100);
 			turnLeft(180);
 			ahead(100);
+		}
+		}
+		else {
+			if(action_index ==0) {
+				setAhead(100);
+
+			}
+			else if (action_index==1) {
+				setBack(100);
+			}
+			else if(action_index==2) {
+				setTurnLeft(90); 
+				setAhead(100);	
+			}
+			else if(action_index==3) {
+				setTurnRight(90);
+				setAhead(100);
+			}
+			else if(action_index == 4) {
+				setTurnLeft(180);
+				setAhead(100);
+			}
+			
 		}
 	} // take action works
 	public int quantize_position(double x_coor) {
@@ -459,74 +471,4 @@ public void onRoundEnded(RoundEndedEvent e_1) {
 		total_reward_per_action += reward_3;
 		//System.out.println(" GETTING HIT BY BULLET ");
 		}
-	/*
-	//wall smoothing (To make sure RL robot does not get stuck in the wall)
-	public void onHitWall(HitWallEvent e){
-		double reward_4=-2.0;//earlier it was -2
-		total_reward_per_action += reward_4;
-		System.out.println(" HITTING A WALL ");
-		double xPos=this.getX();
-		double yPos=this.getY();
-		double width=this.getBattleFieldWidth();
-		double height=this.getBattleFieldHeight();
-		if(yPos<80)//too close to the bottom
-		{
-			
-			turnLeft(getHeading() % 90);
-			//System.out.println("Get heading");
-			//System.out.println(getHeading());
-			if(getHeading()==0){turnLeft(0);}
-			if(getHeading()==90){turnLeft(90);}
-			if(getHeading()==180){turnLeft(180);}
-			if(getHeading()==270){turnRight(90);}
-			ahead(150);
-			System.out.println("Too close to the bottom!!!!!!!");
-			if ((this.getHeading()<180)&&(this.getHeading()>90))
-			{
-				this.setTurnLeft(90);
-			}
-			else if((this.getHeading()<270)&&(this.getHeading()>180))
-			{
-				this.setTurnRight(90);
-			}
-			
-			
-		}
-		else if(yPos>height-80){ //to close to the top
-			System.out.println("Too close to the Top!!!!!!!");
-			if((this.getHeading()<90)&&(this.getHeading()>0)){this.setTurnRight(90);}
-			else if((this.getHeading()<360)&&(this.getHeading()>270)){this.setTurnLeft(90);}
-			turnLeft(getHeading() % 90);
-			//System.out.println("Get heading");
-			//System.out.println(getHeading());
-			if(getHeading()==0){turnRight(180);}
-			if(getHeading()==90){turnRight(90);}
-			if(getHeading()==180){turnLeft(0);}
-			if(getHeading()==270){turnLeft(90);}
-			ahead(150);
-			
-		}
-		else if(xPos<80){
-			turnLeft(getHeading() % 90);
-			//System.out.println("Get heading");
-			//System.out.println(getHeading());
-			if(getHeading()==0){turnRight(90);}
-			if(getHeading()==90){turnLeft(0);}
-			if(getHeading()==180){turnLeft(90);}
-			if(getHeading()==270){turnRight(180);}
-			ahead(150);
-		}
-		else if(xPos>width-80){
-			turnLeft(getHeading() % 90);
-			//System.out.println("Get heading");
-			//System.out.println(getHeading());
-			if(getHeading()==0){turnLeft(90);}
-			if(getHeading()==90){turnLeft(180);}
-			if(getHeading()==180){turnRight(90);}
-			if(getHeading()==270){turnRight(0);}
-			ahead(150);
-		}
-		
-	}
-	*/
 }
